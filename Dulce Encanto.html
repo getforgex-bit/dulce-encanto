@@ -714,8 +714,10 @@ body.con-barra{padding-bottom:84px}
   </div>
 </dialog>
 
+<!-- Scan-bar: data-url = URL pública de Scan-bar (vacía = solo el menú de este archivo). Ver README. -->
+<script src="scanbar.js" data-url="" data-tienda="dulce-encanto"></script>
 <script>
-(() => {
+(window.ScanbarWeb ? window.ScanbarWeb.iniciar : (arrancar) => arrancar([]))((extras) => {
 'use strict';
 
 /* ================= Configuración del negocio (editar aquí) ================= */
@@ -775,6 +777,7 @@ const PRODUCTOS = [
   { id: 'galleta-avena', cat: 'galletas', nombre: 'Galleta de avena', precio: 12, unidad: 'pza', desc: 'Con avena, sencilla y rica.', icon: { t: 'cookie', k: 'avena' } },
   { id: 'galleta-decorada', cat: 'galletas', nombre: 'Galleta decorada', precio: 20, unidad: 'pza', desc: 'Decorada con glaseado de colores.', icon: { t: 'cookie', k: 'decorada' } }
 ];
+PRODUCTOS.push(...productosDeScanbar(extras));
 const VALORES = ['Ética', 'Amabilidad', 'Respeto', 'Higiene', 'Innovación', 'Responsabilidad', 'Honestidad', 'Pasión por la repostería'];
 const byId = Object.fromEntries(PRODUCTOS.map(p => [p.id, p]));
 
@@ -1476,7 +1479,27 @@ sincronizarFormDisena();
 pintarDisena(false);
 pintarContador();
 pintarCheckout();
-})();
+
+/* ================= Productos agregados desde Scan-bar =================
+   Categoría en Scan-bar: pasteles, cupcakes o galletas (la sección del menú). Cada variante es un renglón
+   del menú con su propio SKU. Atributo opcional "unidad" (p. ej. "pza"). */
+function productosDeScanbar(lista) {
+  const ICONOS = {
+    pasteles: { t: 'slice', pan: 'vainilla', relleno: 'fresa', cob: 'chantilly', top: 'roseta' },
+    cupcakes: { t: 'cup', liner: '#F7B3C4', cake: '#F2CF8E', frost: '#FFF8EF', shade: '#DCC7B4', top: 'chispas' },
+    galletas: { t: 'cookie', k: 'chispas' }
+  };
+  const propios = new Set(PRODUCTOS.map(p => p.id));
+  return lista.flatMap(x => {
+    if (!ICONOS[x.category]) { console.warn(`Scan-bar: ${x.sku} se omite (categoría: pasteles, cupcakes o galletas)`); return []; }
+    const unidad = x.attrs && /^[\p{L}\p{N} .]{1,8}$/u.test(x.attrs.unidad) ? x.attrs.unidad : undefined; // se inserta en el HTML del menú
+    return x.variants.filter(v => !propios.has(v.sku)).map(v => ({
+      id: v.sku, cat: x.category, nombre: v.label ? `${x.name} — ${v.label}` : x.name, precio: v.priceCents / 100,
+      unidad, desc: x.description || '', icon: ICONOS[x.category]
+    }));
+  });
+}
+});
 </script>
 
 </body></html>
